@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div class="container">
+        <form>
+            <div class="row" style="padding: 10px">
+                <div class="form-group" id="forID" style="display: none">
+                    <label for="id">ID: </label>
+                    <input type="text" class="form-control" id="id">
+                </div>
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" class="form-control" id="fullName">
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone number</label>
+                    <input type="number" class="form-control" id="phone">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email address</label>
+                    <input type="email" class="form-control" id="email">
+                </div>
+            </div>
+            <div class="row" style="padding: 10px">
+                <div class="form-check">
+                    <label for="province">City</label>
+                    <select class="select form-control" id="province">
+                    </select>
+                </div>
+                <div class="form-check">
+                    <label for="district">District</label>
+                    <select class="select form-control" id="district">
+                    </select>
+                </div>
+                <div class="form-check">
+                    <label for="ward">Ward</label>
+                    <select class="select form-control" id="ward">
+                    </select>
+                </div>
+            </div>
+            <button id="createBtn" type="button" class="btn btn-primary">Submit</button>
+        </form>
+
+        <table class="table" style="margin-top: 10px">
+            <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Full Name</th>
+                <th scope="col">Phone number</th>
+                <th scope="col">Email</th>
+                <th scope="col">City</th>
+                <th scope="col">District</th>
+                <th scope="col">Ward</th>
+                <th scope="col">Edit</th>
+                <th scope="col">Delete</th>
+
+            </tr>
+            </thead>
+            <tbody id="customerList">
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modal fade" id="updateModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Modal update user information</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group row">
+                            <div class="col-2">
+                                <label for="idUp">ID</label>
+                                <input type="text" class="form-control" id="idUp" readonly>
+                            </div>
+                            <div class="col-5">
+                                <label for="fullName">Full Name</label>
+                                <input type="text" class="form-control" id="fullNameUp">
+                            </div>
+                            <div class="col-5">
+                                <label for="email">Email</label>
+                                <input type="email" class="form-control" id="emailUp">
+                            </div>
+                            <div class="col-4">
+                                <label for="phone">Phone</label>
+                                <input type="text" class="form-control" id="phoneUp">
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <div class="col-4">
+                                <label for="phone">Province</label>
+                                <select id="provinceUp" class="select form-control">
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <label for="districtUp">District:</label>
+                                <select id="districtUp" class="select form-control">
+                                </select>
+                            </div>
+                            <div class="col-4">
+                                <label for="wardUp">Ward:</label>
+                                <select id="wardUp" class="select form-control">
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="button" id="btnUpdate" class="btn btn-primary">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    $(document).ready(function (){
+        getListUser();
+        getAllProvinces().then (function () {
+            getAllDistrict($("#province").val()).then (function () {
+                getAllWard($("#district").val());
+            });
+
+        })
+        editCustomer ();
+    });
+
+    $("#createBtn").on("click",function () {
+        Swal.fire({
+            title: 'Do you want to save the Customer?',
+            showDenyButton: true,
+            showCancelButton: true,
+            confirmButtonText: 'Save',
+            denyButtonText: `Don't save`,
+        }).then((result) => {
+            /* Read more about isConfirmed, isDenied below */
+            if (result.isConfirmed) {
+                createCustomer();
+                Swal.fire('Saved!', '', 'success')
+            } else if (result.isDenied) {
+                Swal.fire('Changes are not saved', '', 'info')
+            }
+        })
+
+    })
+
+
+
+    function editCustomer () {
+        $("table tbody tr").on("click", ".edit", function () {
+            let id = $(this).data("id");
+            $.ajax(
+                {
+                    headers: {
+                        'Accept':'application/json',
+                        'Content-Type':'application/json'
+                    },
+                    url: "http://localhost:8080/api/edit/" + id,
+                    type: "GET"
+            }
+            ).done( function (data) {
+                $("#idUp").val(data.id);
+                $("#fullNameUp").val(data.fullName);
+                $("#emailUp").val(data.email);
+                $("#phoneUp").val(data.phoneNumber);
+                $("#provinceUp").val(data.provimceId);
+                getAllDistrict(data.provimceId).then(function (){
+                    $("#districtUp").val(data.districtId);
+                    getAllWard(data.districtId).then(function () {
+                        $("#wardUp").val(data.wardId);
+                    })
+                })
+
+                // $("#districtUp").val(data.district);
+                // $("#wardUp").val(data.ward);
+            }).fail(function () {
+                alert("ERROR")
+            });
+        })
+
+    }
+
+    function createCustomer () {
+        let customer = {
+            fullName : $("#fullName").val(),
+            phoneNumber : $("#phone").val(),
+            email: $("#email").val(),
+            provinces: $('#province :selected').text(),
+            district: $('#district :selected').text(),
+            ward: $('#ward :selected').text(),
+            provimceId: $("#province").val(),
+            districtId: $("#district").val(),
+            wardId: $("#ward").val()
+        }
+        $.ajax({
+            headers: {
+                'Accept':'application/json',
+                'Content-Type':'application/json'
+            },
+            url: "http://localhost:8080/api/create",
+            type: "POST",
+            data: JSON.stringify(customer)
+        }).done (function (respCustomer) {
+            emptyval();
+            let str = `
+                    <tr id="tr_${respCustomer.id}">
+                            <th scope="row">${respCustomer.id}</th>
+                            <td>${respCustomer.fullName}</td>
+                            <td>${respCustomer.phoneNumber}</td>
+                            <td>${respCustomer.email}</td>
+                            <td>${respCustomer.provinces}</td>
+                            <td>${respCustomer.district}</td>
+                            <td>${respCustomer.ward}</td>
+                            <td>
+                            <button id="btn_edit" type="button" data-toggle="modal" data-target="#updateModal" class="btn btn-outline-primary edit"
+                                data-id="${respCustomer.id}">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                `;
+
+            $("#customerList").prepend(str);
+            updateCustomer();
+            editCustomer ();
+
+        }).fail(function () {
+            alert("ERROR")
+        });
+    }
+
+    function emptyval() {
+            $('#fullName').val('');
+            $('#phone').val('');
+            $('#email').val('');
+            // $('#province').empty();
+            // $('#district').empty();
+            // $('#ward').empty();
+    }
+
+
+    function getListUser() {
+        $.ajax(
+            {
+                url: "http://localhost:8080/api/list",
+                type: "GET"
+            }
+        ).done(function (resp) {
+
+            let str = '';
+
+            $.each(resp, function(index, item) {
+                str = `
+                        <tr id="tr_${item.id}">
+                            <th scope="row">${item.id}</th>
+                            <td>${item.fullName}</td>
+                            <td>${item.phoneNumber}</td>
+                            <td>${item.email}</td>
+                            <td>${item.provinces}</td>
+                            <td>${item.district}</td>
+                            <td>${item.ward}</td>
+                            <td>
+                            <button type="button" data-toggle="modal" data-target="#updateModal" class="btn btn-outline-primary edit"
+                                data-id="${item.id}"
+                                >
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+
+                $("#customerList").prepend(str);
+                editCustomer ()
+                // handleEdit();
+            })
+        }).fail(function () {
+            alert("ERROR")
+        });
+
+    }
+
+
+    function getAllProvinces() {
+       return $.ajax({
+            url:"https://vapi.vnappmob.com/api/province",
+            type:"GET"
+        }).done(function (data){
+            let str ='';
+            $.each(data.results, function (index, item) {
+                str = `
+                <option value = "${item.province_id}">${item.province_name}</option>
+                `;
+                $('#province').append(str);
+                $('#provinceUp').append(str);
+            })
+
+        })
+    }
+
+    $("#provinceUp").on("change",function (){
+        let id = $("#provinceUp").val();
+        getAllDistrict(id);
+    })
+
+    $("#province").on("change",function () {
+        let id = $("#province").val();
+        getAllDistrict(id).then(function (){
+            let district_id = $("#district").val();
+            getAllWard(district_id);
+         });
+
+    })
+
+    function getAllDistrict (id) {
+        $("#district").empty();
+        $("#districtUp").empty();
+       return $.ajax({
+            url:"https://vapi.vnappmob.com/api/province/district/" + id,
+            type:"GET"
+        }).done(function (data){
+            let str ='';
+            $.each(data.results, function (index, item) {
+                str = `
+                <option value = "${item.district_id}">${item.district_name}</option>
+                `;
+                $('#district').append(str);
+                $('#districtUp').append(str);
+            })
+
+        })
+    }
+
+    $("#district").on("change",function () {
+        let id =  $("#district").val();
+        getAllWard(id);
+    })
+
+    $("#districtUp").on("change",function () {
+        let id =  $("#districtUp").val();
+        getAllWard(id);
+    })
+
+    function getAllWard (id) {
+        $("#ward").empty();
+        $("#wardUp").empty();
+        $.ajax({
+            url:"https://vapi.vnappmob.com/api/province/ward/" +id,
+            type:"GET"
+        }).done(function (data){
+            let str ='';
+            $.each(data.results, function (index, item) {
+                str = `
+                <option value = "${item.ward_id}">${item.ward_name}</option>
+                `;
+                $('#ward').append(str);
+                $('#wardUp').append(str);
+            })
+
+        })
+    }
+
+    $("#btnUpdate").on("click",function () {
+        updateCustomer();
+    })
+
+    function updateCustomer() {
+        let customer = {
+            id : $("#idUp").val(),
+            fullName : $("#fullNameUp").val(),
+            phoneNumber : $("#phoneUp").val(),
+            email: $("#emailUp").val(),
+            provinces: $('#provinceUp :selected').text(),
+            district: $('#districtUp :selected').text(),
+            ward: $('#wardUp :selected').text(),
+            provimceId: $("#provinceUp").val(),
+            districtId: $("#districtUp").val(),
+            wardId: $("#ward").val()
+        }
+        $.ajax({
+            headers: {
+                'Accept':'application/json',
+                'Content-Type':'application/json'
+            },
+            url: "http://localhost:8080/api/update",
+            type: "POST",
+            data: JSON.stringify(customer)
+        }).done (function (respCustomer) {
+            console.log(respCustomer);
+            let str = '';
+
+            str = `
+                    <tr id="tr_${respCustomer.id}">
+                            <th scope="row">${respCustomer.id}</th>
+                            <td>${respCustomer.fullName}</td>
+                            <td>${respCustomer.phoneNumber}</td>
+                            <td>${respCustomer.email}</td>
+                            <td>${respCustomer.provinces}</td>
+                            <td>${respCustomer.district}</td>
+                            <td>${respCustomer.ward}</td>
+                            <td>
+                            <button id="btn_edit" type="button" data-toggle="modal" data-target="#updateModal" class="btn btn-outline-primary edit"
+                                data-id="${respCustomer.id}">
+                                    Edit
+                                </button>
+                            </td>
+                        </tr>
+                `;
+
+            $("#tr_"+ respCustomer.id).replaceWith(str);
+
+            $("#updateModal").modal('hide');
+            editCustomer ();
+
+        }).fail(function () {
+            alert("ERROR")
+        });
+    }
+
+</script>
+
+</body>
+</html>
